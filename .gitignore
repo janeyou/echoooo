@@ -27,3 +27,6 @@ Echoooo/Resources/Secrets.local.xcconfig
 
 # Private notes (specs, roadmaps, internal docs)
 notes/
+
+# Design handoff (prototype HTML/JSX, design references)
+design_handoff_ui_revamp/

@@ -85,8 +85,8 @@ enum EchooooError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notAuthenticated: return "Connect Dropbox to start recording."
-        case .uploadFailed: return "Failed to upload recording."
+        case .notAuthenticated: return "Connect Dropbox before listening."
+        case .uploadFailed: return "Failed to upload audio."
         case .transcriptionFailed(let msg): return "Transcription failed: \(msg)"
         case .networkError: return "Network error."
         }

@@ -22,6 +22,7 @@ class TranscriptionPipeline: ObservableObject {
     private(set) var lastRecordingURL: URL?
     private(set) var lastDropboxPath: String?
 
+    private var transcribeTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     var isAuthenticated: Bool { dropbox.isAuthenticated }
@@ -54,9 +55,25 @@ class TranscriptionPipeline: ObservableObject {
         state = .recording
     }
 
-    func stopAndTranscribe() async {
+    func stopAndTranscribe() {
+        transcribeTask?.cancel()
+        transcribeTask = Task { [weak self] in
+            await self?.runStopAndTranscribe()
+        }
+    }
+
+    func cancelTranscribe() {
+        transcribeTask?.cancel()
+        transcribeTask = nil
+        if let fileURL = lastRecordingURL {
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+        state = .idle
+    }
+
+    private func runStopAndTranscribe() async {
         guard let fileURL = recorder.stop() else {
-            state = .failed(message: "No recording file found.")
+            state = .failed(message: "No audio file found.")
             return
         }
 
@@ -64,10 +81,11 @@ class TranscriptionPipeline: ObservableObject {
         lastDropboxPath = dropboxPath
 
         do {
+            try Task.checkCancellation()
             state = .uploading
             _ = try await dropbox.upload(localURL: fileURL, dropboxPath: dropboxPath)
-            try? FileManager.default.removeItem(at: fileURL)
 
+            try Task.checkCancellation()
             state = .transcribing
             guard let token = await dropbox.getAccessToken() else {
                 state = .failed(message: EchooooError.notAuthenticated.localizedDescription)
@@ -77,9 +95,50 @@ class TranscriptionPipeline: ObservableObject {
             let jobId = try await riviera.transcribe(dropboxPath: dropboxPath, token: token)
             let transcript = try await riviera.poll(jobId: jobId, token: token)
 
+            try Task.checkCancellation()
+
+            let keepAudio = UserDefaults.standard.object(forKey: SettingsKey.keepAudio) as? Bool
+                ?? SettingsDefault.keepAudio
+            if keepAudio {
+                if let movedURL = Self.relocateToDocuments(fileURL) {
+                    lastRecordingURL = movedURL
+                }
+            } else {
+                try? FileManager.default.removeItem(at: fileURL)
+            }
+
             state = .complete(transcript: transcript)
+        } catch is CancellationError {
+            // user-initiated cancel, state already set to .idle in cancelTranscribe
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // URLSession cancelled, also user-initiated
         } catch {
-            state = .failed(message: error.localizedDescription)
+            if Task.isCancelled {
+                // suppress, treat as cancellation
+            } else {
+                state = .failed(message: error.localizedDescription)
+            }
+        }
+    }
+
+    private static func relocateToDocuments(_ tempURL: URL) -> URL? {
+        let fm = FileManager.default
+        guard let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let recordingsDir = docs.appendingPathComponent("recordings", isDirectory: true)
+        do {
+            try fm.createDirectory(at: recordingsDir, withIntermediateDirectories: true)
+        } catch {
+            return nil
+        }
+        let dest = recordingsDir.appendingPathComponent(tempURL.lastPathComponent)
+        try? fm.removeItem(at: dest)
+        do {
+            try fm.moveItem(at: tempURL, to: dest)
+            return dest
+        } catch {
+            return nil
         }
     }
 }
