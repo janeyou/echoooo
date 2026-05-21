@@ -30,3 +30,6 @@ notes/
 
 # Design handoff (prototype HTML/JSX, design references)
 design_handoff_ui_revamp/
+
+# Local screenshot outputs
+screenshots/

@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import UserNotifications
 
 struct HomeView: View {
     @EnvironmentObject private var pipeline: TranscriptionPipeline
@@ -64,9 +63,6 @@ struct HomeView: View {
             } message: {
                 Text(recordingError ?? "")
             }
-            .task {
-                await requestNotificationPermissionIfNeeded()
-            }
             .onChange(of: pipeline.state) { _, newState in
                 switch newState {
                 case .complete(let transcript):
@@ -90,25 +86,88 @@ struct HomeView: View {
 
     private var emptyLayout: some View {
         VStack(spacing: 0) {
-            topBar(leftSlot: AnyView(Color.clear.frame(width: 32, height: 32)))
+            welcomeTopBar
                 .padding(.horizontal, 14)
                 .padding(.top, 8)
 
-            masthead
-                .padding(.top, 36)
+            Spacer(minLength: 0)
+
+            welcomeHero
+                .padding(.horizontal, 32)
 
             Spacer(minLength: 0)
 
-            recordCluster(eyebrow: "TAP TO CONNECT DROPBOX", subCaption: nil)
+            connectCTA
+                .padding(.horizontal, 28)
 
-            stepsBlock
-                .padding(.top, 28)
+            Text("tap, listen, transcribe.")
+                .font(.mono400(10))
+                .tracking(1.6)
+                .foregroundStyle(Theme.inkFaint)
+                .padding(.top, 16)
 
             Spacer(minLength: 0)
 
             privacyFooter
                 .padding(.bottom, 16)
         }
+    }
+
+    private var welcomeTopBar: some View {
+        HStack {
+            Spacer()
+            settingsButton
+        }
+        .frame(height: 44)
+    }
+
+    private var welcomeHero: some View {
+        VStack(spacing: 22) {
+            Image("AppMarkTile")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 88, height: 88)
+
+            Text("Echoooo")
+                .font(.display400(40))
+                .tracking(-0.6)
+                .foregroundStyle(Theme.ink)
+
+            (
+                Text("a quiet way to capture ")
+                    .foregroundStyle(Theme.inkMuted)
+                +
+                Text("conversations")
+                    .italic()
+                    .foregroundStyle(Theme.accent)
+                +
+                Text(".")
+                    .foregroundStyle(Theme.inkMuted)
+            )
+            .font(.body300(16))
+            .lineSpacing(4)
+            .tracking(0.1)
+            .multilineTextAlignment(.center)
+        }
+    }
+
+    private var connectCTA: some View {
+        Button {
+            pipeline.connectDropbox()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "link")
+                    .font(.system(size: 14, weight: .light))
+                Text("connect dropbox")
+                    .font(.body300(15))
+            }
+            .foregroundStyle(Theme.paper)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(Theme.ink)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var connectedLayout: some View {
@@ -240,36 +299,6 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    private var stepsBlock: some View {
-        VStack(spacing: 10) {
-            stepRow(number: "01", verb: "listen", explainer: "tap, the screen dims, we listen")
-            stepRow(number: "02", verb: "transcribe", explainer: "we send it to your dropbox quietly")
-            stepRow(number: "03", verb: "read", explainer: "a transcript appears, ready to copy")
-        }
-        .padding(.horizontal, 32)
-    }
-
-    private func stepRow(number: String, verb: String, explainer: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 0) {
-            Text(number)
-                .font(.mono400(10))
-                .tracking(1.0)
-                .foregroundStyle(Theme.inkFaint)
-                .frame(width: 22, alignment: .leading)
-
-            Text(verb)
-                .font(.body300(14))
-                .foregroundStyle(Theme.ink)
-                .frame(width: 70, alignment: .leading)
-
-            Text(explainer)
-                .font(.body300(12))
-                .foregroundStyle(Theme.inkFaint)
-                .lineSpacing(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
     private var privacyFooter: some View {
         VStack(spacing: 4) {
             Text("audio stays in your dropbox app folder.")
@@ -326,13 +355,6 @@ struct HomeView: View {
                 .frame(height: 0.5)
         }
         .padding(.horizontal, 24)
-    }
-
-    private func requestNotificationPermissionIfNeeded() async {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        guard settings.authorizationStatus == .notDetermined else { return }
-        _ = try? await center.requestAuthorization(options: [.alert, .sound])
     }
 
     private func startRecording() {

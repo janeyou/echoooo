@@ -77,6 +77,12 @@ class RecorderService: ObservableObject {
         elapsedTime = Date().timeIntervalSince(startedAt)
     }
 
+    func simulateListening(elapsed: TimeInterval, level: Float) {
+        isRecording = true
+        elapsedTime = elapsed
+        normalizedPower = level
+    }
+
     private func sampleMeter() {
         guard let recorder, recorder.isRecording else { return }
         recorder.updateMeters()

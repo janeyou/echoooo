@@ -7,7 +7,8 @@ class DropboxService: ObservableObject {
     @Published var isAuthenticated: Bool
 
     init() {
-        self.isAuthenticated = DropboxClientsManager.authorizedClient != nil
+        let demoAuth = DemoMode.isOn && DemoMode.screen != "home-empty"
+        self.isAuthenticated = demoAuth || (DropboxClientsManager.authorizedClient != nil)
     }
 
     func authenticate() {
