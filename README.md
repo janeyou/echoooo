@@ -42,4 +42,4 @@ Echoooo/
 
 ## License
 
-MIT, see [LICENSE](./LICENSE).
+No license yet. All rights reserved until decided.

@@ -66,6 +66,7 @@ class TranscriptionPipeline: ObservableObject {
         do {
             state = .uploading
             _ = try await dropbox.upload(localURL: fileURL, dropboxPath: dropboxPath)
+            try? FileManager.default.removeItem(at: fileURL)
 
             state = .transcribing
             guard let token = await dropbox.getAccessToken() else {
