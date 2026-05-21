@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Xcode user state
+**/xcuserdata/
+**/*.xcuserstate
+
+# Xcode build artifacts
+DerivedData/
+build/
+*.xcarchive
+*.ipa
+
+# SwiftPM caches
+.build/
+.swiftpm/
+
+# Generated Xcode project (regenerate with `xcodegen generate`)
+Echoooo.xcodeproj/
+
+# Secrets
+Echoooo/Resources/Secrets.xcconfig
+Echoooo/Resources/Secrets.local.xcconfig
+
+# Local Claude state
+.claude/settings.local.json
+
+# Private notes (specs, roadmaps, internal docs)
+notes/
